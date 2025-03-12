@@ -1,0 +1,248 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="genderFilter" class="form-label">Køn:</label>
+            <select id="genderFilter" class="form-select" onchange="updateFilters()">
+                <option value="">Alle</option>
+                <option value="Male">Mand</option>
+                <option value="Female">Kvinde</option>
+                <option value="Other">Andet</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="campusFilter" class="form-label">Campus:</label>
+            <select id="campusFilter" class="form-select" onchange="updateFilters()">
+                <option value="">Alle</option>
+                <option value="Odense">Odense</option>
+                <option value="Esbjerg">Esbjerg</option>
+                <option value="Sønderborg">Sønderborg</option>
+                <option value="Kolding">Kolding</option>
+                <option value="Vejle">Vejle</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table id="list" class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>CPR</th>
+                    <th onclick="toggleSortOrder()" style="cursor: pointer; color: white">
+                        Navn
+                        <span id="sortArrow" class="bi bi-arrow-up"></span>
+                    </th>
+                    <th>Email</th>
+                    <th>Køn</th>
+                    <th>Campus</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="5">unpopulated</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="d-flex justify-content-between mt-3">
+            <button class="btn btn-primary" onclick="downloadJson()">Download JSON</button>
+            <div class="right-buttons">
+                <button id="prevPage" class="btn btn-secondary" onclick="prevPage()" disabled>&laquo; Forrige </button>
+                <button id="nextPage" class="btn btn-secondary" onclick="nextPage()" disabled>Næste &raquo;</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let genderFilter = '';
+    let campusFilter = '';
+    let sortField = 'name';
+    let sortOrder = 'ascending';
+    let pageNumber = 1;
+    let pageSize = 10;
+
+    window.onload = function() {
+        setParametersFromPathIfAny();
+        updateList();
+    };
+
+    function setParametersFromPathIfAny() {
+        const urlParams = new URLSearchParams(window.location.search);
+        genderFilter = urlParams.get('gender') || '';
+        campusFilter = urlParams.get('campus') || '';
+        sortOrder = urlParams.get('sortOrder') || 'ascending';
+        pageNumber = parseInt(urlParams.get('pageNumber')) || 1;
+        pageSize = parseInt(urlParams.get('pageSize')) || 10;
+
+        document.getElementById('genderFilter').value = genderFilter;
+        document.getElementById('campusFilter').value = campusFilter;
+        updateSortArrow();
+    }
+
+    function updateFilters() {
+        genderFilter = document.getElementById('genderFilter').value;
+        campusFilter = document.getElementById('campusFilter').value;
+        updatePath();
+        updateList();
+    }
+
+    function updateList() {
+        updateListContent([]);
+        getDataFromServer();
+    }
+
+    function updateListContent(students) {
+        const listElement = document.getElementById("list").getElementsByTagName('tbody')[0];
+        const genderMap = {
+            0: 'Mand',
+            1: 'Kvinde',
+            2: 'Andet'
+        };
+
+        if (students.length === 0) {
+            listElement.innerHTML = '<tr><td colspan="5">No students found.</td></tr>';
+        } else {
+            listElement.innerHTML = students.map(student => `
+                <tr>
+                    <td>${student.cprNumber}</td>
+                    <td>${student.name}</td>
+                    <td>${student.email}</td>
+                    <td>${genderMap[student.gender]}</td>
+                    <td>${student.campus}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    function getParameters() {
+        return {
+            gender: genderFilter,
+            campus: campusFilter,
+            sortField: sortField,
+            sortOrder: sortOrder,
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        };
+    }
+
+    function updatePath() {
+        const parameters = getParameters();
+        const url = new URL(window.location);
+        url.searchParams.set('gender', parameters.gender);
+        url.searchParams.set('campus', parameters.campus);
+        url.searchParams.set('sortField', parameters.sortField);
+        url.searchParams.set('sortOrder', parameters.sortOrder);
+        url.searchParams.set('pageNumber', parameters.pageNumber);
+        url.searchParams.set('pageSize', parameters.pageSize);
+        window.history.pushState({}, '', url);
+    }
+
+    function getDataFromServer() {
+        const parameters = getParameters();
+        const queryString = new URLSearchParams(parameters).toString();
+        fetch(`/data/students?${queryString}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateListContent(data.items);
+                document.getElementById('nextPage').disabled = !data.hasNextPage;
+                document.getElementById('prevPage').disabled = pageNumber === 1;
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+                document.getElementById("list").getElementsByTagName('tbody')[0].innerHTML = '<tr><td colspan="5">Failed to load student data.</td></tr>';
+            });
+    }
+
+    function toggleSortOrder() {
+        sortOrder = (sortOrder === 'ascending') ? 'descending' : 'ascending';
+        updateSortArrow();
+        updatePath();
+        updateList();
+    }
+
+    function updateSortArrow() {
+        const sortArrow = document.getElementById('sortArrow');
+        if (sortOrder === 'ascending') {
+            sortArrow.className = 'bi bi-arrow-up';
+        } else {
+            sortArrow.className = 'bi bi-arrow-down';
+        }
+    }
+
+    function nextPage() {
+        pageNumber++;
+        updatePath();
+        updateList();
+    }
+
+    function prevPage() {
+        if (pageNumber > 1) {
+            pageNumber--;
+            updatePath();
+            updateList();
+        }
+    }
+
+    function downloadJson() {
+        const listElement = document.getElementById("list").getElementsByTagName('tbody')[0];
+        const rows = listElement.getElementsByTagName('tr');
+        const students = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName('td');
+            if (cells.length === 5) {
+                const student = {
+                    cprNumber: cells[0].innerText,
+                    name: cells[1].innerText,
+                    email: cells[2].innerText,
+                    gender: cells[3].innerText,
+                    campus: cells[4].innerText
+                };
+                students.push(student);
+            }
+        }
+
+        const json = JSON.stringify(students, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'students.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+</script>
+<style>
+    .table-responsive {
+        padding-bottom: 3rem;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center; 
+        gap: 1rem; 
+    }
+
+    .right-buttons {
+        display: flex;
+        gap: 1rem; 
+    }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+</style>

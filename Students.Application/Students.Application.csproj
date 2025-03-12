@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dapper" Version="2.1.66" />
+    <PackageReference Include="fluentvalidation" Version="11.11.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageReference Include="microsoft.data.sqlclient" Version="6.0.1" />
+    <PackageReference Include="microsoft.extensions.dependencyinjection" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Students.DataAccess\Students.DataAccess.csproj" />
+    <ProjectReference Include="..\Students.Domain\Students.Domain.csproj" />
+    <ProjectReference Include="..\Students.Query\Students.Query.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,191 @@
+﻿@{
+    ViewData["Title"] = "Create Student";
+}
+
+<h2>Create Student</h2>
+<form id="createStudentForm" method="post" onsubmit="return validateForm()" class="needs-validation" novalidate>
+    <div class="mb-3">
+        <label for="cprNumber" class="form-label">CPR Nummer:</label>
+        <input type="text" id="cprNumber" name="CprNumber" class="form-control" required pattern="^\d{6}-\d{4}$" title="Invalid CPR number format." />
+        <div class="invalid-feedback" id="cprNumberError"></div>
+    </div>
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Navn:</label>
+        <input type="text" id="name" name="Name" class="form-control" required />
+        <div class="invalid-feedback" id="nameError"></div>
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email:</label>
+        <input type="email" id="email" name="Email" class="form-control" required />
+        <div class="invalid-feedback" id="emailError"></div>
+    </div>
+
+    <div class="mb-3">
+        <label for="gender" class="form-label">Køn:</label>
+        <select id="gender" name="Gender" class="form-select" required>
+            <option value="0">Mand</option>
+            <option value="1">Kvinde</option>
+            <option value="2">Andet</option>
+        </select>
+        <div class="invalid-feedback" id="genderError"></div>
+    </div>
+
+    <div class="mb-3">
+        <label for="campus" class="form-label">Campus:</label>
+        <select id="campus" name="campus" class="form-select" required>
+            <option value="Odense">Odense</option>
+            <option value="Esbjerg">Esbjerg</option>
+            <option value="Sønderborg">Sønderborg</option>
+            <option value="Kolding">Kolding</option>
+            <option value="Vejle">Vejle</option>
+        </select>
+
+        <div class="invalid-feedback" id="campusError"></div>
+    </div>
+
+    <div id="completedSubjectsContainer">
+        <h3>Evt. Afsluttede fag</h3>
+        <button type="button" class="btn btn-secondary mb-3" onclick="addCompletedSubject()">Tilføj afsluttet fag</button>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Opret studerende</button>
+</form>
+<div id="resultMessage" class="alert mt-3" role="alert" style="display: none;"></div>
+
+<script>
+    function validateForm() {
+        let isValid = true;
+
+        const cprNumber = document.getElementById('cprNumber');
+        const email = document.getElementById('email');
+        //const emailRegex = /^[a-zA-Z0-9._%+-]+[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if (!cprNumber.value.match(/^\d{6}-\d{4}$/)) {
+            document.getElementById('cprNumberError').innerText = 'Invalid CPR number format.';
+            isValid = false;
+        } else {
+            document.getElementById('cprNumberError').innerText = '';
+        }
+
+        // if (!email.value.match(emailRegex)) {
+        // document.getElementById('emailError').innerText = 'Invalid email format.';
+        // isValid = false;
+        // } else {
+        //     document.getElementById('emailError').innerText = '';
+        // }
+
+        const completedSubjects = document.querySelectorAll('.completed-subject');
+        completedSubjects.forEach(subject => {
+            const subjectName = subject.querySelector('.subject-name');
+            const grade = subject.querySelector('.grade');
+            const validGrades = ["12", "10", "7", "4", "02", "00", "-3"];
+
+            if (!subjectName.value) {
+                subject.querySelector('.subjectNameError').innerText = 'Subject name is required.';
+                isValid = false;
+            } else {
+                subject.querySelector('.subjectNameError').innerText = '';
+            }
+
+            if (!validGrades.includes(grade.value)) {
+                subject.querySelector('.gradeError').innerText = 'Invalid grade.';
+                isValid = false;
+            } else {
+                subject.querySelector('.gradeError').innerText = '';
+            }
+        });
+
+        if (isValid) {
+            submitForm();
+        }
+
+        return false; 
+    }
+
+    function addCompletedSubject() {
+        const container = document.getElementById('completedSubjectsContainer');
+        const subjectIndex = container.querySelectorAll('.completed-subject').length;
+
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = 'completed-subject mb-3';
+
+        subjectDiv.innerHTML = `
+            <div class="mb-3">
+                <label for="completedSubjects_${subjectIndex}__SubjectName" class="form-label">Subject Name:</label>
+                <input type="text" id="completedSubjects_${subjectIndex}__SubjectName" name="CompletedSubjects[${subjectIndex}].SubjectName" class="form-control subject-name" required />
+                <div class="invalid-feedback subjectNameError"></div>
+            </div>
+            <div class="mb-3">
+                <label for="completedSubjects_${subjectIndex}__Grade" class="form-label">Grade:</label>
+                <input type="text" id="completedSubjects_${subjectIndex}__Grade" name="CompletedSubjects[${subjectIndex}].Grade" class="form-control grade" required />
+                <div class="invalid-feedback gradeError"></div>
+            </div>
+        `;
+
+        container.appendChild(subjectDiv);
+    }
+
+    function submitForm() {
+        const form = document.getElementById('createStudentForm');
+        const formData = new FormData(form);
+
+        fetch('/data/createstudent', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                showResultMessage('Student created successfully!', 'alert-success');
+            } else {
+                response.json().then(data => {
+                    showResultMessage('Failed to create student: ' + JSON.stringify(data), 'alert-danger');
+                });
+            }
+        })
+        .catch(error => {
+            showResultMessage('Failed to create student: ' + error.message, 'alert-danger');
+        });
+    }
+
+    function showResultMessage(message, type) {
+        const resultMessage = document.getElementById('resultMessage');
+        resultMessage.innerText = message;
+        resultMessage.className = 'alert ' + type;
+        resultMessage.style.display = 'block';
+    }
+</script>
+
+<style>
+    .error {
+        color: red;
+    }
+
+    .result-message {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid;
+        display: none;
+    }
+
+        .result-message.success {
+            color: green;
+            border-color: green;
+            display: block;
+        }
+
+        .result-message.error {
+            color: red;
+            border-color: red;
+            display: block;
+        }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        padding-bottom: 60px; 
+    }
+
+</style>
